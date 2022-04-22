@@ -43,13 +43,7 @@ async function run() {
     const usersCollection = database.collection("users");
     const doctorsCollection = database.collection("doctors");
     const feedbackCollection = database.collection("feedback");
-
-    app.post("/appointments", async (req, res) => {
-      const appointment = req.body;
-      const result = await appointmentsCollection.insertOne(appointment);
-      res.json(result);
-    });
-
+    
     app.get("/appointments", verifyToken, async (req, res) => {
       const email = req.query.email;
       const date = req.query.date;
@@ -58,6 +52,20 @@ async function run() {
       const cursor = appointmentsCollection.find(query);
       const appointments = await cursor.toArray();
       res.json(appointments);
+    });
+
+    app.post("/appointments", async (req, res) => {
+      const appointment = req.body;
+      const result = await appointmentsCollection.insertOne(appointment);
+      res.json(result);
+    });
+
+    app.delete("/appointments/:id", async (req, res) => {
+      const id = req.params.id;
+      console.log(id);
+      const query = { _id: new ObjectId(id) };
+      const doctor = await appointmentsCollection.deleteOne(query);
+      res.json(doctor);
     });
 
     app.get("/doctors", async (req, res) => {
@@ -74,6 +82,41 @@ async function run() {
       res.json(doctor);
     });
 
+    
+    app.put("/doctors", async (req, res) => {
+      const name = req.body.name;
+      const id = req.body.id;
+      const title = req.body.title;
+      const email = req.body.email;
+      const image = req.files.image;
+      const description = req.body.description;
+
+      const picData = image.data;
+      const encodedPic = picData.toString("base64");
+      const imageBuffer = Buffer.from(encodedPic, "base64");
+      const newData = {
+        name: name,
+        email: email[0],
+        title: title,
+        image: imageBuffer,
+        description: description
+      };
+
+      console.log(newData);
+
+      const filter = { _id: ObjectId(id) };
+      const options = { upsert: true };
+      const updateDoc = { $set: newData };
+      const result = await doctorsCollection.updateOne(
+        filter,
+        updateDoc,
+        options
+      );
+
+      res.send(result);
+    });
+
+
     app.delete("/doctors/:id", async (req, res) => {
       const id = req.params.id;
       console.log(id);
@@ -87,21 +130,16 @@ async function run() {
       const email = req.body.email;
       const title = req.body.title;
       const doctorPic = req.files.image;
-      const signature = req.files.signature;
       const description = req.body.description;
       const picData = doctorPic.data;
-      const signatureData = signature.data;
       const encodedPic = picData.toString("base64");
-      const encodedSignature = signatureData.toString("base64");
       const imageBuffer = Buffer.from(encodedPic, "base64");
-      const signatureImgBuffer = Buffer.from(encodedSignature, "base64");
 
       const doctor = {
         name,
         email,
         title,
         image: imageBuffer,
-        signatureImg: signatureImgBuffer,
         description,
       };
 
@@ -151,6 +189,38 @@ async function run() {
       const feedback = await feedbackCollection.updateOne(query, updateDoc);
       res.json(feedback);
     });
+
+    app.put("/feedback", async(req,res) => {
+      const body = req.body;
+      const name = req.body.name;
+      const id = req.body.id;
+      const title = req.body.title;
+      const image = req.files.image;
+      const feedback = req.body.feedback;
+      console.log(body);
+
+      const picData = image.data;
+      const encodedPic = picData.toString("base64");
+      const imageBuffer = Buffer.from(encodedPic, "base64");
+
+      const newData = {
+        name: name,
+        title: title,
+        image: imageBuffer,
+        feedback: feedback,
+      };
+
+      const filter = { _id: ObjectId(id) };
+      const options = { upsert: true };
+      const updateDoc = { $set: newData };
+      const result = await feedbackCollection.updateOne(
+        filter,
+        updateDoc,
+        options
+      );
+      
+      res.send(result);
+    })
 
     app.delete("/feedback/:id", async (req, res) => {
       const id = req.params.id;
